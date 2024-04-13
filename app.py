@@ -2,6 +2,8 @@ import streamlit as st
 import requests
 import base64
 import pandas as pd
+import random
+
 st.set_page_config(layout="wide")
 
 def fetch_poster(movie_id):
@@ -17,13 +19,13 @@ def recommend(movie):
     distances = sorted(list(enumerate(similarity[index])), reverse=True, key=lambda x: x[1])
     recommended_movie_names = []
     recommended_movie_posters = []
-    for i in distances[1:6]:
+    for i in distances[1:21]:  # Fetching 20 posters
         # fetch the movie poster
         movie_id = movies.iloc[i[0]].movie_id
         recommended_movie_posters.append(fetch_poster(movie_id))
         recommended_movie_names.append(movies.iloc[i[0]].title)
 
-    return recommended_movie_names,recommended_movie_posters
+    return recommended_movie_names, recommended_movie_posters
 
 st.header('Movie Recommender System')
 
@@ -47,7 +49,6 @@ def set_background(png_file):
 
 set_background('./image-asset.jpeg')
 
-
 try:
     movies = pd.read_pickle('movies (1).pkl')
 except Exception as e:
@@ -58,31 +59,28 @@ try:
 except Exception as e:
     print("Error:", e)
 
-# movies = pickle.load(open('movies.pkl','rb'))
-# similarity = pickle.load(open('model/similarity.pkl','rb'))
-
 movie_list = movies['title'].values
+
+if 'selected_movie' not in st.session_state or st.session_state.selected_movie is None:
+    st.session_state.selected_movie = random.choice(movie_list)
+
 selected_movie = st.selectbox(
     "Type or select a movie from the dropdown",
-    movie_list
+    movie_list,
+    index=movie_list.tolist().index(st.session_state.selected_movie)
 )
 
-if st.button('Show Recommendation'):
-    recommended_movie_names,recommended_movie_posters = recommend(selected_movie)
-    col1, col2, col3, col4, col5 = st.columns(5)
-    with col1:
-        st.text(recommended_movie_names[0])
-        st.image(recommended_movie_posters[0])
-    with col2:
-        st.text(recommended_movie_names[1])
-        st.image(recommended_movie_posters[1])
-
-    with col3:
-        st.text(recommended_movie_names[2])
-        st.image(recommended_movie_posters[2])
-    with col4:
-        st.text(recommended_movie_names[3])
-        st.image(recommended_movie_posters[3])
-    with col5:
-        st.text(recommended_movie_names[4])
-        st.image(recommended_movie_posters[4])
+if st.button('Show Recommendation') or 'is_first_load' not in st.session_state:
+    st.session_state.is_first_load = False
+    st.session_state.selected_movie = selected_movie
+    recommended_movie_names, recommended_movie_posters = recommend(selected_movie)
+    rows = 4
+    cols = 5
+    for i in range(rows):
+        cols_list = st.columns(cols)
+        for j in range(cols):
+            index = i * cols + j
+            if index < len(recommended_movie_names):
+                with cols_list[j]:
+                    st.text(recommended_movie_names[index])
+                    st.image(recommended_movie_posters[index])
